@@ -1,0 +1,16 @@
+{
+  "name": "gtfs-departures",
+  "version": "1.0.0",
+  "description": "Cherkasy departures system with GTFS schedule and real-time tracking",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "echo 'Static site - no build needed'",
+    "start": "node server.mjs"
+  },
+  "keywords": ["gtfs", "transit", "departures", "cherkasy"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

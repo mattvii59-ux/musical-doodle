@@ -1,0 +1,23 @@
+title: Cherkasy Departures System
+description: Real-time transit departures with GTFS schedule and live tracking
+theme: jekyll-theme-slate
+
+# GitHub Pages configuration
+plugins:
+  - jekyll-feed
+
+exclude:
+  - node_modules
+  - .github
+  - .gitignore
+  - package.json
+  - server.mjs
+  - start_server.sh
+  - .vscode
+  - .idea
+
+# Allow HTML files to be served directly
+include:
+  - "*.html"
+  - "*.pb"
+  - "*.zip"
