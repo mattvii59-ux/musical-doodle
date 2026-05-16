@@ -1,0 +1,3254 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Система відправлень Черкаси</title>
+
+<style>
+body{
+    margin:0;
+    background:black;
+    color:#ffcc00;
+    font-family:Arial, sans-serif;
+}
+
+header{
+    background:#111;
+    padding:15px;
+    text-align:center;
+    font-size:40px;
+    border-bottom:4px solid #ffcc00;
+}
+
+#menu{
+    display:flex;
+    gap:10px;
+    padding:10px;
+    background:#0a0a0a;
+    flex-wrap:wrap;
+    align-items:center;
+    position:relative;
+}
+
+body{
+    min-height:100vh;
+}
+
+table{
+    display:block;
+    overflow-x:auto;
+}
+
+@media (max-width: 900px) {
+    header{font-size:28px; padding:12px;}
+    #menu{gap:8px;}
+    #search, select, button, .toggle{font-size:14px;}
+    th, td{padding:8px; font-size:14px;}
+    #drop, #status{font-size:14px;}
+    #dozorModalPanel{padding:16px;}
+}
+
+#search{
+    padding:10px;
+    width:320px;
+    background:#111;
+    color:#ffcc00;
+    border:1px solid #333;
+}
+
+select,button{
+    padding:10px;
+    background:#111;
+    color:#ffcc00;
+    border:1px solid #333;
+    cursor:pointer;
+}
+
+.toggle{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:9px 10px;
+    background:#111;
+    border:1px solid #333;
+    color:#ffcc00;
+    font-size:14px;
+}
+
+.toggle input{
+    accent-color:#ffcc00;
+}
+
+#voice,#language{
+    max-width:260px;
+}
+
+#results{
+    position:absolute;
+    top:60px;
+    left:10px;
+    background:#111;
+    width:320px;
+    max-height:250px;
+    overflow:auto;
+    display:none;
+    border:1px solid #333;
+    z-index:9999;
+}
+
+.item{
+    padding:10px;
+    cursor:pointer;
+}
+
+.item:hover{
+    background:#222;
+}
+
+#drop{
+    margin:10px;
+    padding:15px;
+    border:2px dashed #444;
+    text-align:center;
+}
+
+#drop.loading{
+    border-color:#ffcc00;
+    background:#151000;
+}
+
+#status{
+    margin:0 10px 10px;
+    padding:10px;
+    border:1px solid #333;
+    background:#0d0d0d;
+    color:#ddd;
+    font-size:14px;
+    line-height:1.4;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:20px;
+    table-layout:fixed;
+}
+
+th,td{
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #222;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    vertical-align:top;
+}
+
+th{
+    background:#111;
+    border-bottom:3px solid #ffcc00;
+}
+
+tr:nth-child(even){
+    background:#0a0a0a;
+}
+
+.on{color:#00ff66;}
+.cancel{color:#ff4444;}
+.delay{color:#ff8800;}
+.early{color:#66ccff;}
+.scheduled{color:#ccc;}
+.destination-cell,.calling-cell{text-align:left;}
+.calling-cell{
+    white-space:normal;
+    font-size:16px;
+    line-height:1.35;
+}
+
+#loadDozorBtn{
+    border-color:#ffcc00;
+    font-weight:bold;
+}
+
+#dozorCityField{
+    margin-bottom:14px;
+}
+
+#dozorCityField label{
+    display:block;
+    margin-bottom:6px;
+    font-size:14px;
+}
+
+#dozorCitySelect{
+    width:100%;
+    padding:10px;
+    background:#111;
+    color:#ffcc00;
+    border:1px solid #333;
+    font-size:14px;
+}
+
+#dozorModal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    z-index:10000;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+}
+
+#dozorModal.open{
+    display:flex;
+}
+
+#dozorModalPanel{
+    width:min(520px,100%);
+    background:#111;
+    border:2px solid #ffcc00;
+    padding:20px;
+    color:#ffcc00;
+}
+
+#dozorModalPanel h2{
+    margin:0 0 12px;
+    font-size:22px;
+}
+
+#dozorModalPanel p{
+    color:#ddd;
+    font-size:14px;
+    line-height:1.45;
+    margin:0 0 16px;
+}
+
+#dozorModalActions{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+#dozorModalActions button{
+    width:100%;
+    text-align:left;
+}
+
+#dozorModalClose{
+    margin-top:14px;
+    width:100%;
+}
+</style>
+</head>
+
+<body>
+
+<header>СИСТЕМА ВІДПРАВЛЕНЬ ЧЕРКАСИ</header>
+
+<div id="menu">
+
+<input id="search" placeholder="Пошук станції...">
+
+<select id="mode">
+<option value="realtime" selected>РЕАЛЬНИЙ ЧАС</option>
+<option value="schedule">РОЗКЛАД</option>
+</select>
+
+<select id="language" title="Мова оголошень">
+<option value="en-US">Англійська</option>
+<option value="de-DE">Німецька</option>
+<option value="pl-PL">Польська</option>
+<option value="uk-UA">Українська</option>
+<option value="fr-FR">Французька</option>
+<option value="it-IT">Італійська</option>
+<option value="cs-CZ">Чеська</option>
+</select>
+
+<select id="voice" title="Голос оголошень">
+<option value="">АВТО</option>
+</select>
+
+<label class="toggle" title="Увімкнути або вимкнути озвучення">
+<input id="announce" type="checkbox">
+ОГОЛОШЕННЯ
+</label>
+
+<button id="testVoice" type="button">ПРОВІРИТИ ГОЛОС</button>
+
+<button id="loadDozorBtn" type="button">ЗАВАНТАЖИТИ DOZOR</button>
+
+<button onclick="toggleFullscreen()">ПОВНИЙ ЕКРАН</button>
+
+<div id="results"></div>
+<div id="announcementQueue" title="Черга оголошень"></div>
+
+</div>
+
+<div id="dozorModal" aria-hidden="true">
+    <div id="dozorModalPanel" role="dialog" aria-labelledby="dozorModalTitle">
+        <h2 id="dozorModalTitle">Dozor транспорт</h2>
+        <p>Виберіть місто Dozor та джерело даних. API ключі не потрібні. GTFS використовує ваш ZIP; Dozor обробляє маршрути, зупинки та живі GPS.</p>
+        <div id="dozorCityField">
+            <label for="dozorCitySelect">Місто Dozor</label>
+            <select id="dozorCitySelect">
+                <option value="">Завантаження міст...</option>
+            </select>
+        </div>
+        <div id="dozorModalActions">
+            <button id="dozorChooseGtfs" type="button">Завантажити GTFS ZIP (розклад + .pb)</button>
+            <button id="dozorChooseParse" type="button">Обробити Dozor (маршрути, зупинки, GPS)</button>
+        </div>
+        <button id="dozorModalClose" type="button">Скасувати</button>
+    </div>
+</div>
+
+<input id="dozorGtfsInput" type="file" accept=".zip,application/zip" hidden>
+<input id="dozorRtInput" type="file" accept=".pb,.bin,application/octet-stream" hidden>
+
+<div id="drop">ПЕРЕТЯГНІТЬ GTFS ZIP АБО GTFS REALTIME PB</div>
+<div id="status">Система відправлень Черкаси готова. Натисніть "ЗАВАНТАЖИТИ DOZOR" або перетягніть файли GTFS.</div>
+
+<table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Лінія</th>
+<th>Напрямок</th>
+<th>Відправлення</th>
+<th>Статус</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+</table>
+
+<audio id="gong"></audio>
+
+<script>
+
+/* ================= DATA ================= */
+
+const BOARD_LIMIT = 20;
+const LOOKAHEAD_SECONDS = 18 * 3600;
+const JSZIP_URL = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
+
+const searchInput = document.getElementById("search");
+const resultsBox = document.getElementById("results");
+const dropZone = document.getElementById("drop");
+const statusEl = document.getElementById("status");
+const board = document.getElementById("board");
+const modeSelect = document.getElementById("mode");
+const languageSelect = document.getElementById("language");
+const voiceSelect = document.getElementById("voice");
+const announceToggle = document.getElementById("announce");
+const testVoiceButton = document.getElementById("testVoice");
+const loadDozorBtn = document.getElementById("loadDozorBtn");
+const dozorModal = document.getElementById("dozorModal");
+const dozorCitySelect = document.getElementById("dozorCitySelect");
+const dozorChooseGtfs = document.getElementById("dozorChooseGtfs");
+const dozorChooseParse = document.getElementById("dozorChooseParse");
+const dozorModalClose = document.getElementById("dozorModalClose");
+const dozorGtfsInput = document.getElementById("dozorGtfsInput");
+const dozorRtInput = document.getElementById("dozorRtInput");
+const announcementQueue = document.getElementById("announcementQueue");
+
+const dozorCityStorageKey = "gtfsDeparturesDozorCity";
+
+let dataSource = null;
+let dozorCities = [];
+let dozorCityId = localStorage.getItem(dozorCityStorageKey) || "cherkasy";
+let dozorCityName = "";
+let dozorRoutes = [];
+let dozorDevices = [];
+let dozorRouteByKey = Object.create(null);
+let dozorStopRouteIds = Object.create(null);
+let dozorRefreshTimer = null;
+let dozorLastRefresh = null;
+let dozorCitiesPromise = null;
+
+let stops = [];
+let stationOptions = [];
+let currentStation = null;
+let currentStop = null;
+
+let voices = [];
+let selectedVoice = null;
+const defaultAnnouncementLang = "uk-UA";
+let announcementLang = localStorage.getItem("gtfsDeparturesAnnouncementLang") || defaultAnnouncementLang;
+const languageStorageKey = "gtfsDeparturesAnnouncementLang";
+const voiceStorageKey = "gtfsDeparturesVoiceURI";
+
+let announced = {};
+let loading = false;
+
+let realtimeTripUpdatesByTrip = Object.create(null);
+let realtimeLastLoad = null;
+let realtimeEntityCount = 0;
+let realtimeStats = {
+    tripUpdates: 0,
+    delayedTrips: 0,
+    canceledTrips: 0,
+    skippedStops: 0,
+    maxDelayMinutes: 0
+};
+
+let stopsById = Object.create(null);
+let tripsById = Object.create(null);
+let routesById = Object.create(null);
+let agenciesById = Object.create(null);
+let stopTimesByStop = Object.create(null);
+let stopTimesByTrip = Object.create(null);
+let stopSortDirty = new Set();
+let tripSortDirty = new Set();
+let callingAtCache = Object.create(null);
+let activeServiceIds = new Set();
+let activeFeedDate = null;
+let jsZipPromise = null;
+
+const ANNOUNCEMENT_TEXT = {
+    "en-US": {
+        test: "Platform 1. This is a test station announcement.",
+        destinationFallback: "your destination",
+        railFallback: "rail",
+        plusDay: "plus",
+        otherStations: ", and other stations",
+        canceled: ({ time, operator, destination }) =>
+            `Your attention please. The ${time} ${operator} service to ${destination} has been cancelled. We are sorry for any inconvenience.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `The ${time} ${operator} service to ${destination} is delayed by approximately ${delayMinutes} minutes. We are sorry that your journey will take longer than planned.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `The train now standing at platform ${platform} is the ${time} ${operator} service to ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `The train is the ${time} ${operator} service to ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Platform ${platform}, for the ${time}, ${operator} service to ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `For the ${time}, ${operator} service to ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` This train is formed of ${coaches} coaches.`,
+        callingOnly: destination => `Calling at ${destination} only`,
+        callingAt: ({ list, extra, destination }) => `Calling at ${list}${extra}, and ${destination}`
+    },
+    "de-DE": {
+        test: "Gleis 1. Dies ist eine Testansage.",
+        destinationFallback: "Ihr Ziel",
+        railFallback: "Bahn",
+        plusDay: "plus",
+        otherStations: ", und weiteren Stationen",
+        canceled: ({ time, operator, destination }) =>
+            `Achtung bitte. Der ${operator} Zug um ${time} nach ${destination} fällt aus. Wir bitten um Entschuldigung.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Der ${operator} Zug um ${time} nach ${destination} hat etwa ${delayMinutes} Minuten Verspätung. Wir bitten um Entschuldigung, dass Ihre Reise länger dauert als geplant.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Der Zug auf Gleis ${platform} ist der ${operator} Zug um ${time} nach ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Der Zug ist der ${operator} Zug um ${time} nach ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Gleis ${platform}, für den ${operator} Zug um ${time} nach ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Für den ${operator} Zug um ${time} nach ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Dieser Zug besteht aus ${coaches} Wagen.`,
+        callingOnly: destination => `Dieser Zug hält nur in ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Dieser Zug hält in ${list}${extra}, und ${destination}`
+    },
+    "pl-PL": {
+        test: "Peron 1. To jest testowy komunikat stacyjny.",
+        destinationFallback: "stacji docelowej",
+        railFallback: "kolejowy",
+        plusDay: "plus",
+        otherStations: ", i innych stacjach",
+        canceled: ({ time, operator, destination }) =>
+            `Prosimy o uwagę. Pociąg ${operator} o ${time} do ${destination} został odwołany. Przepraszamy za utrudnienia.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Pociąg ${operator} o ${time} do ${destination} jest opóźniony o około ${delayMinutes} minut. Przepraszamy, że podróż potrwa dłużej niż planowano.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Pociąg stojący przy peronie ${platform} to pociąg ${operator} o ${time} do ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Pociąg to pociąg ${operator} o ${time} do ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Peron ${platform}, pociąg ${operator} o ${time} do ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Pociąg ${operator} o ${time} do ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Pociąg składa się z ${coaches} wagonów.`,
+        callingOnly: destination => `Zatrzymuje się tylko na stacji ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Zatrzymuje się na stacjach ${list}${extra}, oraz ${destination}`
+    },
+    "uk-UA": {
+        test: "Платформа 1. Це тестове станційне оголошення.",
+        destinationFallback: "пункту призначення",
+        railFallback: "залізничний",
+        plusDay: "плюс",
+        otherStations: ", та інших станціях",
+        canceled: ({ time, operator, destination }) =>
+            `Увага. Рейс ${operator} о ${time} до ${destination} скасовано. Перепрошуємо за незручності.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Рейс ${operator} о ${time} до ${destination} затримується приблизно на ${delayMinutes} хвилин. Перепрошуємо, що ваша подорож триватиме довше, ніж планувалося.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Потяг, що стоїть біля платформи ${platform}, це рейс ${operator} о ${time} до ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Потяг це рейс ${operator} о ${time} до ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Платформа ${platform}, рейс ${operator} о ${time} до ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Рейс ${operator} о ${time} до ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Потяг складається з ${coaches} вагонів.`,
+        callingOnly: destination => `Зупиняється лише на станції ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Зупиняється на станціях ${list}${extra}, та ${destination}`
+    },
+    "fr-FR": {
+        test: "Voie 1. Ceci est une annonce de test en gare.",
+        destinationFallback: "votre destination",
+        railFallback: "ferroviaire",
+        plusDay: "plus",
+        otherStations: ", et d'autres gares",
+        canceled: ({ time, operator, destination }) =>
+            `Votre attention s'il vous plaît. Le service ${operator} de ${time} à destination de ${destination} est annulé. Nous sommes désolés pour la gêne occasionnée.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Le service ${operator} de ${time} à destination de ${destination} est retardé d'environ ${delayMinutes} minutes. Nous sommes désolés que votre trajet prenne plus de temps que prévu.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Le train à quai voie ${platform} est le service ${operator} de ${time} à destination de ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Le train est le service ${operator} de ${time} à destination de ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Voie ${platform}, pour le service ${operator} de ${time} à destination de ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Pour le service ${operator} de ${time} à destination de ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Ce train est composé de ${coaches} voitures.`,
+        callingOnly: destination => `Il dessert uniquement ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Il dessert ${list}${extra}, et ${destination}`
+    },
+    "it-IT": {
+        test: "Binario 1. Questo è un annuncio di prova in stazione.",
+        destinationFallback: "la tua destinazione",
+        railFallback: "ferroviario",
+        plusDay: "più",
+        otherStations: ", e altre stazioni",
+        canceled: ({ time, operator, destination }) =>
+            `Attenzione prego. Il servizio ${operator} delle ${time} per ${destination} è stato cancellato. Ci scusiamo per il disagio.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Il servizio ${operator} delle ${time} per ${destination} è in ritardo di circa ${delayMinutes} minuti. Ci scusiamo perché il viaggio richiederà più tempo del previsto.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Il treno in sosta al binario ${platform} è il servizio ${operator} delle ${time} per ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Il treno è il servizio ${operator} delle ${time} per ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Binario ${platform}, servizio ${operator} delle ${time} per ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Servizio ${operator} delle ${time} per ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Questo treno è composto da ${coaches} carrozze.`,
+        callingOnly: destination => `Ferma solo a ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Ferma a ${list}${extra}, e ${destination}`
+    },
+    "cs-CZ": {
+        test: "Nástupiště 1. Toto je zkušební staniční hlášení.",
+        destinationFallback: "vaší cílové stanice",
+        railFallback: "železniční",
+        plusDay: "plus",
+        otherStations: ", a dalších stanicích",
+        canceled: ({ time, operator, destination }) =>
+            `Prosíme o pozornost. Spoj ${operator} v ${time} do stanice ${destination} byl zrušen. Omlouváme se za komplikace.`,
+        delay: ({ time, operator, destination, delayMinutes }) =>
+            `Spoj ${operator} v ${time} do stanice ${destination} má zpoždění přibližně ${delayMinutes} minut. Omlouváme se, že vaše cesta potrvá déle, než bylo plánováno.`,
+        starts: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Vlak stojící u nástupiště ${platform} je spoj ${operator} v ${time} do stanice ${destination}. ${calling}.${coaches}`,
+        starts_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Vlak je spoj ${operator} v ${time} do stanice ${destination}. ${calling}.${coaches}`,
+        through: ({ platform, time, operator, destination, calling, coaches }) =>
+            `Nástupiště ${platform}, spoj ${operator} v ${time} do stanice ${destination}. ${calling}.${coaches}`,
+        through_no_platform: ({ time, operator, destination, calling, coaches }) =>
+            `Spoj ${operator} v ${time} do stanice ${destination}. ${calling}.${coaches}`,
+        coaches: coaches => ` Tento vlak má ${coaches} vozů.`,
+        callingOnly: destination => `Zastavuje pouze ve stanici ${destination}`,
+        callingAt: ({ list, extra, destination }) => `Zastavuje ve stanicích ${list}${extra}, a ${destination}`
+    }
+};
+
+if(!ANNOUNCEMENT_TEXT[announcementLang]){
+    announcementLang = defaultAnnouncementLang;
+}
+languageSelect.value = announcementLang;
+
+/* ================= STATUS ================= */
+
+function setStatus(text){
+    statusEl.textContent = text;
+}
+
+function setLoading(value){
+    loading = value;
+    dropZone.classList.toggle("loading", value);
+    searchInput.disabled = value;
+}
+
+function showError(prefix, err){
+    console.error(prefix, err);
+    setStatus(`${prefix}: ${err?.message || err}`);
+}
+
+function openDozorModal(){
+    dozorModal.classList.add("open");
+    dozorModal.setAttribute("aria-hidden", "false");
+    ensureDozorCities().catch(err => showError("Не вдалося завантажити список міст Dozor", err));
+}
+
+function closeDozorModal(){
+    dozorModal.classList.remove("open");
+    dozorModal.setAttribute("aria-hidden", "true");
+}
+
+function stopDozorRefresh(){
+    if(dozorRefreshTimer){
+        clearInterval(dozorRefreshTimer);
+        dozorRefreshTimer = null;
+    }
+}
+
+function getSelectedDozorCityId(){
+    const selected = dozorCitySelect?.value || dozorCityId;
+    return selected || "cherkasy";
+}
+
+function getDozorCityQuery(){
+    return `city=${encodeURIComponent(getSelectedDozorCityId())}`;
+}
+
+function getDozorCityLabel(city){
+    const region = city.region ? ` — ${city.region}` : "";
+    return `${city.name0 || city.id}${region}`;
+}
+
+const DOZOR_REMOTE_BASE = "https://city.dozor.tech";
+const DOZOR_CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+function getDirectDozorPath(path){
+    try{
+        const url = new URL(path, window.location.origin);
+        if(url.pathname === "/api/dozor/cities"){
+            return `${DOZOR_REMOTE_BASE}/cities`;
+        }
+        if(url.pathname === "/api/dozor/devices"){
+            const city = url.searchParams.get("city") || "cherkasy";
+            return `${DOZOR_REMOTE_BASE}/${encodeURIComponent(city)}/devices.json`;
+        }
+        if(url.pathname === "/api/dozor/routes"){
+            return `${DOZOR_REMOTE_BASE}/data?t=1&h=0`;
+        }
+        if(url.pathname === "/api/dozor/live"){
+            const params = new URLSearchParams();
+            params.set("t", "2");
+            params.set("p", url.searchParams.get("p") || "");
+            return `${DOZOR_REMOTE_BASE}/data?${params.toString()}`;
+        }
+    }
+    catch(e){
+        return null;
+    }
+    return null;
+}
+
+async function fetchDozorJson(path){
+    const directPath = getDirectDozorPath(path);
+    const isStaticHost = !window.location.hostname.match(/localhost|127\.0\.0\.1|^::1$/);
+
+    async function parseResponse(resp){
+        const raw = await resp.text();
+        let payload = null;
+
+        try{
+            payload = raw ? JSON.parse(raw) : null;
+        }
+        catch(err){
+            payload = null;
+        }
+
+        if(!resp.ok){
+            const message =
+                payload && typeof payload === "object" && !Array.isArray(payload) && payload.error
+                    ? payload.error
+                    : `${resp.url} returned HTTP ${resp.status}`;
+            throw new Error(message);
+        }
+
+        return payload;
+    }
+
+    if(directPath && isStaticHost){
+        try{
+            const proxyPath = `${DOZOR_CORS_PROXY}${encodeURIComponent(directPath)}`;
+            const proxyResp = await fetch(proxyPath, { cache:"no-store" });
+            if(proxyResp.ok){
+                return await parseResponse(proxyResp);
+            }
+            console.warn(`Dozor CORS proxy failed for ${proxyPath}: ${proxyResp.status}`);
+        }
+        catch(err){
+            console.warn(`Dozor CORS proxy fetch failed for ${directPath}`, err);
+        }
+
+        throw new Error(`Не вдалося отримати дані Dozor на GitHub Pages. Спробуйте локальний сервер або інший CORS-проксі.`);
+    }
+
+    const resp = await fetch(path, { cache:"no-store" });
+    return await parseResponse(resp);
+}
+
+async function ensureDozorCities(){
+    if(dozorCities.length){
+        populateDozorCitySelect();
+        return;
+    }
+
+    if(!dozorCitiesPromise){
+        dozorCitiesPromise = fetchDozorJson("/api/dozor/cities").then(cities => {
+            if(!Array.isArray(cities) || !cities.length){
+                throw new Error("Dozor city list is empty.");
+            }
+
+            dozorCities = cities;
+            populateDozorCitySelect();
+        }).finally(() => {
+            dozorCitiesPromise = null;
+        });
+    }
+
+    return dozorCitiesPromise;
+}
+
+function populateDozorCitySelect(){
+    if(!dozorCitySelect){
+        return;
+    }
+
+    const previous = getSelectedDozorCityId();
+    dozorCitySelect.textContent = "";
+
+    const sorted = [...dozorCities].sort((a,b) =>
+        getDozorCityLabel(a).localeCompare(getDozorCityLabel(b), "uk")
+    );
+
+    for(const city of sorted){
+        const option = document.createElement("option");
+        option.value = city.id;
+        option.textContent = getDozorCityLabel(city);
+        dozorCitySelect.appendChild(option);
+    }
+
+    if(sorted.some(city => city.id === previous)){
+        dozorCitySelect.value = previous;
+        dozorCityId = previous;
+    }
+    else if(sorted.length){
+        dozorCitySelect.value = sorted[0].id;
+        dozorCityId = sorted[0].id;
+    }
+}
+
+function pickDozorLabel(value){
+    if(Array.isArray(value)){
+        return (value[0] || value[1] || value[2] || "").trim();
+    }
+    return String(value || "").trim();
+}
+
+function parseDozorRouteType(route){
+    const match = String(route?.inf || "").match(/\{(\d+)\}/);
+    const code = match ? Number(match[1]) : 1;
+
+    switch(code){
+        case 2:
+            return { label:"TROLLEYBUS", gtfsType:11 };
+        case 3:
+            return { label:"TRAM", gtfsType:0 };
+        default:
+            return { label:"BUS", gtfsType:3 };
+    }
+}
+
+function dozorRouteKey(shortName, gtfsType){
+    return `${shortName}|${gtfsType}`;
+}
+
+function parseDozorDestination(routeName){
+    const text = String(routeName || "").replace(/^\.?№\s*[^-]+-\s*/u, "").trim();
+    const parts = text.split(/\s*-\s*/u);
+    return (parts[parts.length - 1] || text || dozorCityName || "destination").trim();
+}
+
+function dozorDeviceIdentity(device){
+    const plate = String(device.gov_number || device.imei || "").trim();
+    if(plate){
+        return plate;
+    }
+
+    return [
+        device.route_short_name,
+        Math.round(Number(device.latitude) * 10000),
+        Math.round(Number(device.longitude) * 10000)
+    ].join("|");
+}
+
+function normalizeDozorDevicesJson(devices){
+    if(!Array.isArray(devices)){
+        return [];
+    }
+
+    return devices
+        .map(device => ({
+            route_id: String(device.route_id || ""),
+            route_short_name: String(device.route_short_name || "").trim(),
+            route_type: Number(device.route_type),
+            latitude: Number(device.latitude),
+            longitude: Number(device.longitude),
+            speed: Number(device.speed) || 0,
+            gov_number: String(device.gov_number || "").trim(),
+            imei: String(device.imei || "").trim(),
+            source: "devices.json"
+        }))
+        .filter(device =>
+            device.route_short_name &&
+            Number.isFinite(device.latitude) &&
+            Number.isFinite(device.longitude)
+        );
+}
+
+function normalizeDozorBrokerLive(liveGroups, routesById){
+    const devices = [];
+
+    for(const group of liveGroups || []){
+        const route = routesById[String(group.rId)];
+        if(!route){
+            continue;
+        }
+
+        const typeInfo = parseDozorRouteType(route);
+
+        for(const vehicle of group.dvs || []){
+            const lat = Number(vehicle.loc?.lat);
+            const lon = Number(vehicle.loc?.lng);
+            if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+                continue;
+            }
+
+            devices.push({
+                route_id: String(route.id),
+                route_short_name: String(route.sNm || "").trim(),
+                route_type: typeInfo.gtfsType,
+                latitude: lat,
+                longitude: lon,
+                speed: Number(vehicle.spd) || 0,
+                gov_number: String(vehicle.gNb || "").trim(),
+                imei: String(vehicle.id || ""),
+                source: "broker"
+            });
+        }
+    }
+
+    return devices;
+}
+
+function mergeDozorDevices(primary, secondary){
+    const merged = new Map();
+
+    for(const device of [...primary, ...secondary]){
+        merged.set(dozorDeviceIdentity(device), device);
+    }
+
+    return [...merged.values()];
+}
+
+async function loadDozorVehicles(routeList){
+    const routesById = Object.create(null);
+
+    for(const route of routeList){
+        routesById[String(route.id)] = route;
+    }
+
+    let devices = [];
+
+    try{
+        const jsonDevices = await fetchDozorJson(`/api/dozor/devices?${getDozorCityQuery()}`);
+        devices = normalizeDozorDevicesJson(jsonDevices);
+    }
+    catch(err){
+        console.warn("Dozor devices.json unavailable", err);
+    }
+
+    try{
+        const livePayload = await fetchDozorJson(`/api/dozor/live?${getDozorCityQuery()}`);
+        const brokerDevices = normalizeDozorBrokerLive(livePayload?.data, routesById);
+        devices = mergeDozorDevices(devices, brokerDevices);
+    }
+    catch(err){
+        console.warn("Dozor broker live unavailable", err);
+    }
+
+    return devices;
+}
+
+function haversineMeters(lat1, lon1, lat2, lon2){
+    const earthRadius = 6371000;
+    const toRad = deg => deg * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+    return 2 * earthRadius * Math.asin(Math.sqrt(a));
+}
+
+function buildDozorNetwork(routeList){
+    dozorRoutes = routeList;
+    dozorRouteByKey = Object.create(null);
+    dozorStopRouteIds = Object.create(null);
+    stops = [];
+    stopsById = Object.create(null);
+
+    const stationGroups = Object.create(null);
+
+    for(const route of routeList){
+        const typeInfo = parseDozorRouteType(route);
+        const shortName = String(route.sNm || "").trim();
+        const routeId = String(route.id);
+        const routeKey = dozorRouteKey(shortName, typeInfo.gtfsType);
+
+        dozorRouteByKey[routeKey] = route;
+
+        for(const zone of route.zns || []){
+            const stopId = `dozor_z_${zone.id}`;
+            const stopName = pickDozorLabel(zone.nm);
+
+            if(!stopsById[stopId]){
+                const stop = {
+                    stop_id: stopId,
+                    stop_name: stopName,
+                    stop_lat: zone.ctr?.lat ?? zone.pt?.lat,
+                    stop_lon: zone.ctr?.lng ?? zone.pt?.lng
+                };
+                stopsById[stopId] = stop;
+                stops.push(stop);
+            }
+
+            if(!dozorStopRouteIds[stopId]){
+                dozorStopRouteIds[stopId] = new Set();
+            }
+            dozorStopRouteIds[stopId].add(routeId);
+
+            if(!stationGroups[stopName]){
+                stationGroups[stopName] = {
+                    id: stopId,
+                    name: stopName,
+                    stopIds: [],
+                    search: normalizeSearch(stopName)
+                };
+            }
+
+            if(!stationGroups[stopName].stopIds.includes(stopId)){
+                stationGroups[stopName].stopIds.push(stopId);
+            }
+        }
+    }
+
+    stationOptions = Object.values(stationGroups)
+        .filter(station => station.stopIds.length)
+        .sort((a,b) => a.name.localeCompare(b.name, "uk"));
+}
+
+function getDozorRoutesForStopIds(stopIds){
+    const routeIds = new Set();
+
+    for(const stopId of stopIds){
+        for(const routeId of dozorStopRouteIds[stopId] || []){
+            routeIds.add(routeId);
+        }
+    }
+
+    return dozorRoutes.filter(route => routeIds.has(String(route.id)));
+}
+
+function getDozorDevicesForRoute(route){
+    const typeInfo = parseDozorRouteType(route);
+    const key = dozorRouteKey(String(route.sNm || "").trim(), typeInfo.gtfsType);
+
+    return dozorDevices.filter(device => {
+        const deviceKey = dozorRouteKey(String(device.route_short_name || "").trim(), Number(device.route_type));
+        return deviceKey === key;
+    });
+}
+
+function estimateDozorEtaSeconds(distanceMeters, speedKmh){
+    const speed = Math.max(12, Number(speedKmh) || 0);
+    return Math.max(30, Math.round(distanceMeters / (speed / 3.6)));
+}
+
+function formatEta(seconds){
+    if(seconds < 60){
+        return `${Math.max(0, Math.round(seconds))}s`;
+    }
+
+    const totalSeconds = Math.max(0, Math.round(seconds));
+    const hours = Math.floor(totalSeconds / 3600);
+    const remaining = totalSeconds % 3600;
+    const minutes = Math.floor(remaining / 60);
+    const secs = Math.floor(remaining % 60);
+
+    if(hours > 0){
+        return `${hours}h ${minutes}m`;
+    }
+
+    if(minutes > 0){
+        return `${minutes}m ${String(secs).padStart(2, "0")}s`;
+    }
+
+    return `${secs}s`;
+}
+
+function formatDozorArrivalTime(seconds){
+    const now = new Date();
+    now.setSeconds(now.getSeconds() + Math.max(0, Math.round(seconds)));
+    const h = String(now.getHours()).padStart(2, "0");
+    const m = String(now.getMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+}
+
+function getDozorStatus(distanceMeters, speedKmh){
+    if(distanceMeters <= 80){
+        return { text:"AT STOP", className:"on" };
+    }
+    if(distanceMeters <= 350){
+        return { text:"APPROACHING", className:"delay" };
+    }
+    if((speedKmh || 0) > 0){
+        return { text:"EN ROUTE", className:"scheduled" };
+    }
+    return { text:"LIVE", className:"scheduled" };
+}
+
+async function refreshDozorDevices(){
+    if(!dozorRoutes.length){
+        return;
+    }
+
+    dozorDevices = await loadDozorVehicles(dozorRoutes);
+    dozorLastRefresh = new Date();
+
+    if(currentStation){
+        render();
+    }
+}
+
+function startDozorRefresh(){
+    stopDozorRefresh();
+    dozorRefreshTimer = setInterval(() => {
+        refreshDozorDevices().catch(err => console.warn("Dozor refresh failed", err));
+    }, 20000);
+}
+
+async function loadDozorCity(cityId){
+    setLoading(true);
+    resetScheduleData();
+    stopDozorRefresh();
+    dataSource = "dozor";
+    modeSelect.value = "realtime";
+
+    try{
+        await ensureDozorCities();
+
+        dozorCityId = cityId || getSelectedDozorCityId();
+        localStorage.setItem(dozorCityStorageKey, dozorCityId);
+
+        if(dozorCitySelect){
+            dozorCitySelect.value = dozorCityId;
+        }
+
+        const cityMeta = dozorCities.find(city => city.id === dozorCityId);
+        dozorCityName = cityMeta?.name0 || dozorCityId;
+
+        setStatus(`Завантаження Dozor ${dozorCityName} маршруту та зупинок...`);
+        const routesPayload = await fetchDozorJson(`/api/dozor/routes?${getDozorCityQuery()}`);
+        const routeList = Array.isArray(routesPayload?.data) ? routesPayload.data : [];
+
+        if(!routeList.length){
+            throw new Error(`Dozor returned no routes for ${dozorCityName}.`);
+        }
+
+        setStatus(`Завантаження живих транспортів для ${dozorCityName}...`);
+        dozorDevices = await loadDozorVehicles(routeList);
+
+        buildDozorNetwork(routeList);
+        clearBoard();
+
+        const stopCount = stationOptions.length;
+        const routeCount = dozorRoutes.length;
+        const vehicleCount = dozorDevices.length;
+
+        setStatus(
+            `Dozor ${dozorCityName}: ${stopCount.toLocaleString()} stops, ` +
+            `${routeCount.toLocaleString()} routes, ${vehicleCount.toLocaleString()} live vehicles. ` +
+            `Search for a stop. Updated ${new Date().toLocaleTimeString()}.`
+        );
+
+        startDozorRefresh();
+    }
+    finally{
+        setLoading(false);
+    }
+}
+
+/* ================= SEARCH ================= */
+
+searchInput.addEventListener("input",()=>{
+    const q = normalizeSearch(searchInput.value);
+    resultsBox.innerHTML = "";
+
+    if(!q){
+        resultsBox.style.display = "none";
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    const matches = stationOptions
+        .filter(s => s.search.includes(q))
+        .slice(0, 50);
+
+    for(const station of matches){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = station.name;
+        div.onclick = () => selectStation(station);
+        fragment.appendChild(div);
+    }
+
+    if(!matches.length){
+        const div = document.createElement("div");
+        div.className = "item";
+        div.textContent = loading ? "Завантаження даних..." : "Станцію не знайдено";
+        fragment.appendChild(div);
+    }
+
+    resultsBox.appendChild(fragment);
+    resultsBox.style.display = "block";
+});
+
+modeSelect.addEventListener("change", render);
+
+languageSelect.addEventListener("change",()=>{
+    announcementLang = ANNOUNCEMENT_TEXT[languageSelect.value] ? languageSelect.value : defaultAnnouncementLang;
+    localStorage.setItem(languageStorageKey, announcementLang);
+
+    if(!localStorage.getItem(voiceStorageKey)){
+        choosePreferredVoice();
+    }
+});
+
+voiceSelect.addEventListener("change",()=>{
+    const uri = voiceSelect.value;
+    if(uri){
+        localStorage.setItem(voiceStorageKey, uri);
+        selectedVoice = voices.find(v => v.voiceURI === uri) || null;
+    }
+    else{
+        localStorage.removeItem(voiceStorageKey);
+        choosePreferredVoice();
+    }
+});
+
+testVoiceButton.addEventListener("click",()=>{
+    speak(getAnnouncementText().test);
+});
+
+loadDozorBtn.addEventListener("click", openDozorModal);
+dozorModalClose.addEventListener("click", closeDozorModal);
+dozorChooseGtfs.addEventListener("click", () => dozorGtfsInput.click());
+dozorChooseParse.addEventListener("click", () => {
+    const cityId = getSelectedDozorCityId();
+    if(!cityId){
+        showError("Місто Dozor не вибране", new Error("Спочатку виберіть місто Dozor."));
+        return;
+    }
+
+    closeDozorModal();
+    loadDozorCity(cityId).catch(err => showError(`Не вдалося завантажити Dozor ${dozorCityName || cityId}`, err));
+});
+
+dozorCitySelect.addEventListener("change", () => {
+    dozorCityId = getSelectedDozorCityId();
+    localStorage.setItem(dozorCityStorageKey, dozorCityId);
+});
+
+dozorModal.addEventListener("click", e => {
+    if(e.target === dozorModal){
+        closeDozorModal();
+    }
+});
+
+dozorGtfsInput.addEventListener("change", async () => {
+    const file = dozorGtfsInput.files?.[0];
+    dozorGtfsInput.value = "";
+    if(!file){
+        return;
+    }
+
+    closeDozorModal();
+    stopDozorRefresh();
+
+    try{
+        dataSource = "gtfs";
+        await loadGtfsZip(file, { sourceName:file.name });
+        setStatus(`${statusEl.textContent} Опційно: оберіть GTFS realtime .pb файл наступним.`);
+        dozorRtInput.click();
+    }
+    catch(err){
+        showError("Завантаження GTFS не вдалося", err);
+    }
+});
+
+dozorRtInput.addEventListener("change", async () => {
+    const file = dozorRtInput.files?.[0];
+    dozorRtInput.value = "";
+    if(!file){
+        return;
+    }
+
+    try{
+        await loadRealtimeFeed(file, { sourceName:file.name });
+    }
+    catch(err){
+        showError("Завантаження живого фіду не вдалося", err);
+    }
+});
+
+document.addEventListener("click",(e)=>{
+    if(!document.getElementById("menu").contains(e.target)){
+        resultsBox.style.display = "none";
+    }
+});
+
+function selectStation(station){
+    currentStation = station;
+    currentStop = station.id;
+    searchInput.value = station.name;
+    resultsBox.style.display = "none";
+    announced = {};
+    render();
+}
+
+/* ================= VOICES ================= */
+
+function choosePreferredVoice(){
+    if(!("speechSynthesis" in window)){
+        return;
+    }
+
+    voices = speechSynthesis.getVoices();
+    populateVoiceSelect();
+
+    const savedVoiceURI = localStorage.getItem(voiceStorageKey);
+    if(savedVoiceURI){
+        selectedVoice = voices.find(v => v.voiceURI === savedVoiceURI) || null;
+        if(selectedVoice){
+            voiceSelect.value = selectedVoice.voiceURI;
+            return;
+        }
+    }
+
+    const langPrefix = announcementLang.split("-")[0];
+    const preferredNames = [
+        "Google UK English Female",
+        "Google US English Female",
+        "Google US English",
+        "Google UK English",
+        "English (United States)",
+        "English (UK)"
+    ];
+
+    selectedVoice = voices.find(v =>
+        preferredNames.some(name => v.name.includes(name)) && voiceMatchesLanguage(v, announcementLang)
+    );
+
+    if(!selectedVoice){
+        selectedVoice =
+            voices.find(v => v.lang === announcementLang) ||
+            voices.find(v => v.lang?.toLowerCase().startsWith(langPrefix.toLowerCase())) ||
+            voices.find(v => v.lang?.startsWith("en")) ||
+            voices[0] ||
+            null;
+    }
+
+    voiceSelect.value = "";
+}
+
+function voiceMatchesLanguage(voice, lang){
+    const prefix = lang.split("-")[0].toLowerCase();
+    return voice.lang?.toLowerCase() === lang.toLowerCase() ||
+        voice.lang?.toLowerCase().startsWith(prefix);
+}
+
+function populateVoiceSelect(){
+    const currentValue = voiceSelect.value || localStorage.getItem(voiceStorageKey) || "";
+    voiceSelect.textContent = "";
+
+    const autoOption = document.createElement("option");
+    autoOption.value = "";
+    autoOption.textContent = voices.length ? "АВТО" : "ГОЛОСІВ НЕМАЄ";
+    voiceSelect.appendChild(autoOption);
+
+    for(const voice of voices){
+        const option = document.createElement("option");
+        option.value = voice.voiceURI;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+    }
+
+    if(currentValue && voices.some(v => v.voiceURI === currentValue)){
+        voiceSelect.value = currentValue;
+    }
+}
+
+if("speechSynthesis" in window){
+    speechSynthesis.onvoiceschanged = choosePreferredVoice;
+    choosePreferredVoice();
+}
+
+/* ================= SPEECH ================= */
+
+let speechQueue = [];
+let speechActive = false;
+
+function speak(text){
+    if(!("speechSynthesis" in window)){
+        return;
+    }
+
+    speechQueue.push(text);
+    updateAnnouncementQueueUI();
+    if(!speechActive){
+        speakNext();
+    }
+}
+
+function speakNext(){
+    if(!speechQueue.length){
+        speechActive = false;
+        updateAnnouncementQueueUI();
+        return;
+    }
+
+    speechActive = true;
+    const text = speechQueue.shift();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.82;
+    u.lang = selectedVoice?.lang || announcementLang;
+
+    if(selectedVoice){
+        u.voice = selectedVoice;
+    }
+
+    u.onend = () => {
+        speechActive = false;
+        updateAnnouncementQueueUI();
+        speakNext();
+    };
+
+    u.onerror = () => {
+        speechActive = false;
+        updateAnnouncementQueueUI();
+        speakNext();
+    };
+
+    speechSynthesis.speak(u);
+}
+
+function updateAnnouncementQueueUI(){
+    try{
+        if(!announcementQueue) return;
+        if(speechQueue.length){
+            announcementQueue.textContent = `Оголошень в черзі: ${speechQueue.length}`;
+        }
+        else{
+            announcementQueue.textContent = "";
+        }
+    }
+    catch(e){
+        // ignore UI update errors
+    }
+}
+
+/* ================= FILE LOAD ================= */
+
+dropZone.ondragover = e => e.preventDefault();
+
+dropZone.ondrop = async e => {
+    e.preventDefault();
+
+    const file = e.dataTransfer.files[0];
+    if(!file){
+        return;
+    }
+
+    const name = file.name.toLowerCase();
+
+    try{
+        if(name.endsWith(".zip")){
+            stopDozorRefresh();
+            dataSource = "gtfs";
+            await loadGtfsZip(file, { sourceName:file.name });
+        }
+        else if(name.endsWith(".pb") || name.endsWith(".bin")){
+            await loadRealtimeFeed(file, { sourceName:file.name });
+        }
+        else{
+            setStatus("Будь ласка, перетягніть GTFS ZIP або GTFS realtime .pb файл.");
+        }
+    }
+    catch(err){
+        showError("Не вдалося завантажити файл", err);
+    }
+};
+
+async function autoLoadFiles(){
+    const params = new URLSearchParams(location.search);
+    if(params.get("autoload") === "0"){
+        setStatus("Автозавантаження вимкнено. Використайте ЗАВАНТАЖИТИ DOZOR або перетягніть файли GTFS.");
+    }
+
+    // Check for specific source parameter or default to Cherkasy Dozor
+    if(params.get("source") === "dozor" || params.get("source") === null){
+        const cityId = params.get("city") || "cherkasy";
+        try{
+            await loadDozorCity(cityId);
+        }
+        catch(err){
+            showError("Не вдалося автоматично завантажити місто Dozor", err);
+        }
+        return;
+    }
+
+    if(location.protocol === "file:"){
+        setStatus("Відкрийте http://127.0.0.1:4173/ або використайте ЗАВАНТАЖИТИ DOZOR.");
+        return;
+    }
+
+    let loadedSchedule = false;
+
+    try{
+        setStatus("Автозавантаження latest.zip...");
+        dataSource = "gtfs";
+        const zipBlob = await fetchLocalBlob("latest.zip");
+        await loadGtfsZip(zipBlob, { sourceName:"latest.zip", quiet:true });
+        loadedSchedule = true;
+    }
+    catch(err){
+        setStatus("Файл latest.zip не знайдено. Використайте ЗАВАНТАЖИТИ DOZOR або перетягніть GTFS ZIP.");
+        console.warn("Auto-load latest.zip failed", err);
+    }
+
+    if(!loadedSchedule){
+        return;
+    }
+
+    try{
+        setStatus("Автозавантаження realtime-free.pb...");
+        const pbBlob = await fetchLocalBlob("realtime-free.pb");
+        await loadRealtimeFeed(pbBlob, { sourceName:"realtime-free.pb", quiet:true });
+    }
+    catch(err){
+        console.warn("Auto-load realtime-free.pb failed", err);
+        setStatus("Розклад завантажено. Живий фід недоступний; перетягніть realtime-free.pb для живих оновлень.");
+    }
+}
+
+async function fetchLocalBlob(fileName){
+    const resp = await fetch(fileName, { cache:"no-store" });
+    if(!resp.ok){
+        throw new Error(`${fileName} returned HTTP ${resp.status}`);
+    }
+    return await resp.blob();
+}
+
+window.addEventListener("load", () => {
+    // Attempt auto-load sequence
+    autoLoadFiles().catch(err => {
+        console.warn("Initial auto-load failed, will retry on button click", err);
+    });
+    
+    // Auto-load Dozor Cherkasy as fallback if nothing loaded in 3 seconds
+    setTimeout(() => {
+        if(!currentStation && !dataSource){
+            console.info("No data loaded yet, attempting to load Cherkasy Dozor...");
+            loadDozorCity("cherkasy").catch(err => {
+                console.warn("Could not auto-load Cherkasy Dozor", err);
+            });
+        }
+    }, 3000);
+});
+
+/* ================= GTFS LOAD ================= */
+
+async function loadGtfsZip(file, options = {}){
+    const sourceName = options.sourceName || "GTFS ZIP";
+    setLoading(true);
+    resetScheduleData();
+    dataSource = "gtfs";
+
+    try{
+        const JSZip = await loadJSZip();
+        setStatus(`Відкрито ${sourceName}...`);
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+        setStatus("Читання календаря послуг...");
+        const calendarRows = await parseOptionalZipCsvText(zip, "calendar.txt");
+        const calendarDateRows = await parseOptionalZipCsvText(zip, "calendar_dates.txt");
+        const serviceInfo = chooseServiceDate(calendarRows, calendarDateRows, new Date());
+        activeServiceIds = serviceInfo.ids;
+        activeFeedDate = serviceInfo.ymd;
+
+        setStatus("Читання операторів...");
+        await streamZipCsv(zip, "agency.txt", {
+            onRecord(fields, index){
+                const agencyId = valueAt(fields, index, "agency_id") || "default";
+                agenciesById[agencyId] = {
+                    agency_id: agencyId,
+                    agency_name: valueAt(fields, index, "agency_name"),
+                    agency_url: valueAt(fields, index, "agency_url"),
+                    agency_timezone: valueAt(fields, index, "agency_timezone")
+                };
+            }
+        });
+
+        setStatus(`Читання маршрутів для ${formatDateLabel(activeFeedDate)}...`);
+        await streamZipCsv(zip, "routes.txt", {
+            onRecord(fields, index){
+                const routeId = valueAt(fields, index, "route_id");
+                if(!routeId) return;
+                routesById[routeId] = {
+                    route_id: routeId,
+                    agency_id: valueAt(fields, index, "agency_id"),
+                    route_short_name: valueAt(fields, index, "route_short_name"),
+                    route_long_name: valueAt(fields, index, "route_long_name"),
+                    route_type: valueAt(fields, index, "route_type"),
+                    route_color: valueAt(fields, index, "route_color"),
+                    route_text_color: valueAt(fields, index, "route_text_color")
+                };
+            }
+        });
+
+        let stopCount = 0;
+        setStatus("Читання зупинок та платформ...");
+        await streamZipCsv(zip, "stops.txt", {
+            onRecord(fields, index, count){
+                const stopId = valueAt(fields, index, "stop_id");
+                if(!stopId) return;
+
+                const stop = {
+                    stop_id: stopId,
+                    stop_name: valueAt(fields, index, "stop_name"),
+                    parent_station: valueAt(fields, index, "parent_station"),
+                    location_type: valueAt(fields, index, "location_type"),
+                    platform_code: valueAt(fields, index, "platform_code"),
+                    stop_lat: valueAt(fields, index, "stop_lat"),
+                    stop_lon: valueAt(fields, index, "stop_lon")
+                };
+
+                stops.push(stop);
+                stopsById[stopId] = stop;
+                stopCount++;
+
+                if(count % 100000 === 0){
+                    setStatus(`Читання зупинок та платформ... ${count.toLocaleString()} рядків`);
+                }
+            }
+        });
+
+        let totalTrips = 0;
+        let activeTrips = 0;
+        setStatus("Фільтрація рейсів за активною датою...");
+        await streamZipCsv(zip, "trips.txt", {
+            onRecord(fields, index, count){
+                totalTrips++;
+                const tripId = valueAt(fields, index, "trip_id");
+                const serviceId = valueAt(fields, index, "service_id");
+                if(!tripId || !isServiceActive(serviceId)){
+                    return;
+                }
+
+                tripsById[tripId] = {
+                    trip_id: tripId,
+                    route_id: valueAt(fields, index, "route_id"),
+                    service_id: serviceId,
+                    trip_headsign: valueAt(fields, index, "trip_headsign"),
+                    direction_id: valueAt(fields, index, "direction_id")
+                };
+                activeTrips++;
+
+                if(count % 100000 === 0){
+                    setStatus(`Фільтрація рейсів... ${activeTrips.toLocaleString()} активних з ${count.toLocaleString()}`);
+                }
+            }
+        });
+
+        if(!activeTrips){
+            throw new Error(`Не знайдено активних рейсів для ${formatDateLabel(activeFeedDate)}.`);
+        }
+
+        let keptStopTimes = 0;
+        setStatus("Завантаження stop_times.txt. Це велика частина latest.zip...");
+        await streamZipCsv(zip, "stop_times.txt", {
+            onRecord(fields, index, count){
+                const tripId = valueAt(fields, index, "trip_id");
+                if(!tripsById[tripId]){
+                    return;
+                }
+
+                const stopId = valueAt(fields, index, "stop_id");
+                const departureTime = valueAt(fields, index, "departure_time") || valueAt(fields, index, "arrival_time");
+                if(!stopId || !departureTime){
+                    return;
+                }
+
+                const stopTime = {
+                    trip_id: tripId,
+                    stop_id: stopId,
+                    arrival_time: valueAt(fields, index, "arrival_time"),
+                    departure_time: departureTime,
+                    stop_sequence: toNumber(valueAt(fields, index, "stop_sequence")),
+                    stop_headsign: valueAt(fields, index, "stop_headsign"),
+                    pickup_type: valueAt(fields, index, "pickup_type"),
+                    drop_off_type: valueAt(fields, index, "drop_off_type"),
+                    platform_code: valueAt(fields, index, "platform_code")
+                };
+
+                addStopTime(stopTime);
+                keptStopTimes++;
+
+                if(count % 250000 === 0){
+                    setStatus(`Індексовано ${keptStopTimes.toLocaleString()} активних записів stop_times (${count.toLocaleString()} скановано)...`);
+                }
+            }
+        });
+
+        buildStationOptions();
+        clearBoard();
+
+        setStatus(
+            `Loaded ${sourceName}: ${stationOptions.length.toLocaleString()} stations, ` +
+            `${activeTrips.toLocaleString()} active trips, ${keptStopTimes.toLocaleString()} active stop times ` +
+            `for ${formatDateLabel(activeFeedDate)}. Search for a station.`
+        );
+    }
+    finally{
+        setLoading(false);
+    }
+}
+
+function resetScheduleData(){
+    stopDozorRefresh();
+    dataSource = null;
+    dozorCityName = "";
+    dozorRoutes = [];
+    dozorDevices = [];
+    dozorRouteByKey = Object.create(null);
+    dozorStopRouteIds = Object.create(null);
+    dozorLastRefresh = null;
+
+    stops = [];
+    stationOptions = [];
+    currentStation = null;
+    currentStop = null;
+    stopsById = Object.create(null);
+    tripsById = Object.create(null);
+    routesById = Object.create(null);
+    agenciesById = Object.create(null);
+    stopTimesByStop = Object.create(null);
+    stopTimesByTrip = Object.create(null);
+    stopSortDirty = new Set();
+    tripSortDirty = new Set();
+    callingAtCache = Object.create(null);
+    activeServiceIds = new Set();
+    activeFeedDate = null;
+    realtimeTripUpdatesByTrip = Object.create(null);
+    realtimeLastLoad = null;
+    realtimeEntityCount = 0;
+    realtimeStats = {
+        tripUpdates: 0,
+        delayedTrips: 0,
+        canceledTrips: 0,
+        skippedStops: 0,
+        maxDelayMinutes: 0
+    };
+    searchInput.value = "";
+    resultsBox.innerHTML = "";
+    resultsBox.style.display = "none";
+    clearBoard();
+}
+
+function addStopTime(stopTime){
+    if(!stopTimesByStop[stopTime.stop_id]){
+        stopTimesByStop[stopTime.stop_id] = [];
+    }
+
+    if(!stopTimesByTrip[stopTime.trip_id]){
+        stopTimesByTrip[stopTime.trip_id] = [];
+    }
+
+    stopTimesByStop[stopTime.stop_id].push(stopTime);
+    stopTimesByTrip[stopTime.trip_id].push(stopTime);
+    stopSortDirty.add(stopTime.stop_id);
+    tripSortDirty.add(stopTime.trip_id);
+}
+
+function buildStationOptions(){
+    const groups = Object.create(null);
+
+    for(const stop of stops){
+        if(!stop.stop_id || !stop.stop_name){
+            continue;
+        }
+
+        const parent = stop.parent_station ? stopsById[stop.parent_station] : null;
+        const groupId = parent ? parent.stop_id : stop.stop_id;
+        const groupName = (parent?.stop_name || stop.stop_name || "").trim();
+
+        if(!groups[groupId]){
+            groups[groupId] = {
+                id: groupId,
+                name: groupName,
+                stopIds: [],
+                search: normalizeSearch(groupName)
+            };
+        }
+
+        if(stopTimesByStop[stop.stop_id] && !groups[groupId].stopIds.includes(stop.stop_id)){
+            groups[groupId].stopIds.push(stop.stop_id);
+        }
+
+        if(stopTimesByStop[groupId] && !groups[groupId].stopIds.includes(groupId)){
+            groups[groupId].stopIds.push(groupId);
+        }
+    }
+
+    stationOptions = Object.values(groups)
+        .filter(station => station.stopIds.length)
+        .sort((a,b) => a.name.localeCompare(b.name));
+}
+
+function isServiceActive(serviceId){
+    return !activeServiceIds.size || activeServiceIds.has(serviceId);
+}
+
+/* ================= REALTIME LOAD ================= */
+
+async function loadRealtimeFeed(file, options = {}){
+    const sourceName = options.sourceName || "GTFS realtime feed";
+    setLoading(true);
+
+    try{
+        setStatus(`Декодування ${sourceName}...`);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const feed = decodeGtfsRealtime(bytes);
+
+        realtimeTripUpdatesByTrip = Object.create(null);
+        realtimeLastLoad = new Date();
+        realtimeEntityCount = 0;
+        realtimeStats = {
+            tripUpdates: 0,
+            delayedTrips: 0,
+            canceledTrips: 0,
+            skippedStops: 0,
+            maxDelayMinutes: 0
+        };
+
+        for(const entity of readList(feed, "entity")){
+            if(entity.isDeleted){
+                continue;
+            }
+
+            const tripUpdate = read(entity, "tripUpdate", "trip_update");
+            if(!tripUpdate){
+                continue;
+            }
+
+            const trip = read(tripUpdate, "trip") || {};
+            const vehicleTrip = read(read(tripUpdate, "vehicle") || {}, "trip") || {};
+            const tripId = read(trip, "tripId", "trip_id") || read(vehicleTrip, "tripId", "trip_id");
+            if(!tripId){
+                continue;
+            }
+
+            const tripRel = tripScheduleText(read(trip, "scheduleRelationship", "schedule_relationship"));
+            const canceled = tripRel === "CANCELED" || tripRel === "DELETED";
+            const tripDelay = normalizeDelay(read(tripUpdate, "delay"));
+            let firstDelay = null;
+            let firstNonZeroDelay = null;
+            let maxAbsDelay = 0;
+            const stopUpdates = [];
+
+            for(const stu of readList(tripUpdate, "stopTimeUpdate", "stop_time_update")){
+                const departure = read(stu, "departure") || {};
+                const arrival = read(stu, "arrival") || {};
+                const departureDelay = normalizeDelay(read(departure, "delay"));
+                const arrivalDelay = normalizeDelay(read(arrival, "delay"));
+                const delay = departureDelay ?? arrivalDelay;
+                const stopRel = stopScheduleText(read(stu, "scheduleRelationship", "schedule_relationship"));
+                const skipped = stopRel === "SKIPPED";
+
+                if(delay !== null){
+                    if(firstDelay === null){
+                        firstDelay = delay;
+                    }
+                    if(delay !== 0 && firstNonZeroDelay === null){
+                        firstNonZeroDelay = delay;
+                    }
+                    maxAbsDelay = Math.max(maxAbsDelay, Math.abs(delay));
+                }
+
+                if(skipped){
+                    realtimeStats.skippedStops++;
+                }
+
+                stopUpdates.push({
+                    stop_id: read(stu, "stopId", "stop_id"),
+                    stop_sequence: toNumber(read(stu, "stopSequence", "stop_sequence")),
+                    delay,
+                    departureDelay,
+                    arrivalDelay,
+                    skipped,
+                    schedule_relationship: stopRel
+                });
+            }
+
+            const overallDelay = tripDelay ?? firstNonZeroDelay ?? firstDelay;
+
+            const existingUpdate = realtimeTripUpdatesByTrip[tripId];
+            if(existingUpdate){
+                existingUpdate.canceled = existingUpdate.canceled || canceled;
+                if(existingUpdate.delay === null || existingUpdate.delay === undefined || existingUpdate.delay === 0){
+                    existingUpdate.delay = overallDelay ?? existingUpdate.delay;
+                }
+                existingUpdate.stopUpdates.push(...stopUpdates);
+            }
+            else{
+                realtimeTripUpdatesByTrip[tripId] = {
+                    tripId,
+                    canceled,
+                    delay: overallDelay,
+                    stopUpdates
+                };
+            }
+            realtimeEntityCount++;
+            realtimeStats.tripUpdates++;
+
+            if(canceled){
+                realtimeStats.canceledTrips++;
+            }
+            if(overallDelay !== null && overallDelay !== 0){
+                realtimeStats.delayedTrips++;
+            }
+
+            realtimeStats.maxDelayMinutes = Math.max(
+                realtimeStats.maxDelayMinutes,
+                Math.ceil(maxAbsDelay / 60)
+            );
+        }
+
+        setStatus(
+            `Loaded ${sourceName}: ${realtimeStats.tripUpdates.toLocaleString()} trip updates, ` +
+            `${realtimeStats.delayedTrips.toLocaleString()} delayed trips, ` +
+            `${realtimeStats.canceledTrips.toLocaleString()} cancelled trips, ` +
+            `${realtimeStats.skippedStops.toLocaleString()} cancelled stops. ` +
+            `Max delay ${realtimeStats.maxDelayMinutes}m. Updated ${realtimeLastLoad.toLocaleTimeString()}.`
+        );
+
+        if(currentStation){
+            render();
+        }
+    }
+    finally{
+        setLoading(false);
+    }
+}
+
+function getRealtimeUpdate(tripId, stopId, stopSequence){
+    if(modeSelect.value !== "realtime"){
+        return null;
+    }
+
+    const update = realtimeTripUpdatesByTrip[tripId];
+    if(!update){
+        return null;
+    }
+
+    const stopMatch = getBestRealtimeStopUpdate(update, stopId, stopSequence);
+    const stopUpdate = stopMatch?.stopUpdate || null;
+    const tripDelay = update.delay ?? 0;
+
+    if(stopUpdate){
+        return {
+            hasUpdate: true,
+            canceled: update.canceled,
+            skipped: Boolean(stopMatch.exact && stopUpdate.skipped),
+            delay: stopUpdate.delay ?? tripDelay
+        };
+    }
+
+    return {
+        hasUpdate: true,
+        canceled: update.canceled,
+        skipped: false,
+        delay: tripDelay
+    };
+}
+
+function getBestRealtimeStopUpdate(update, stopId, stopSequence){
+    const stopUpdates = update.stopUpdates || [];
+    if(!stopUpdates.length){
+        return null;
+    }
+
+    const exactStop = stopUpdates.find(u => u.stop_id && u.stop_id === stopId);
+    if(exactStop){
+        return { stopUpdate: exactStop, exact: true };
+    }
+
+    const exactSequence = stopUpdates.find(u =>
+        u.stop_sequence !== null &&
+        u.stop_sequence !== undefined &&
+        u.stop_sequence === stopSequence
+    );
+    if(exactSequence){
+        return { stopUpdate: exactSequence, exact: true };
+    }
+
+    if(stopSequence !== null && stopSequence !== undefined){
+        const before = stopUpdates
+            .filter(u => u.stop_sequence !== null && u.stop_sequence !== undefined && u.stop_sequence <= stopSequence)
+            .sort((a,b) => b.stop_sequence - a.stop_sequence)[0];
+
+        if(before){
+            return { stopUpdate: before, exact: false };
+        }
+
+        const after = stopUpdates
+            .filter(u => u.stop_sequence !== null && u.stop_sequence !== undefined && u.stop_sequence > stopSequence)
+            .sort((a,b) => a.stop_sequence - b.stop_sequence)[0];
+
+        if(after){
+            return { stopUpdate: after, exact: false };
+        }
+    }
+
+    return {
+        stopUpdate: stopUpdates.find(u => u.delay !== null && u.delay !== undefined) || stopUpdates[0],
+        exact: false
+    };
+}
+
+/* ================= GTFS REALTIME PROTOBUF ================= */
+
+function decodeGtfsRealtime(bytes){
+    const reader = new ProtoReader(bytes);
+    const feed = { entity: [] };
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 2 && tag.wireType === 2){
+            feed.entity.push(decodeFeedEntity(reader.readEmbedded()));
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return feed;
+}
+
+function decodeFeedEntity(reader){
+    const entity = {};
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 2){
+            entity.id = reader.readString();
+        }
+        else if(tag.field === 2 && tag.wireType === 0){
+            entity.isDeleted = Boolean(reader.readVarintNumber());
+        }
+        else if(tag.field === 3 && tag.wireType === 2){
+            entity.tripUpdate = decodeTripUpdate(reader.readEmbedded());
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return entity;
+}
+
+function decodeTripUpdate(reader){
+    const tripUpdate = { stopTimeUpdate: [] };
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 2){
+            tripUpdate.trip = decodeTripDescriptor(reader.readEmbedded());
+        }
+        else if(tag.field === 2 && tag.wireType === 2){
+            tripUpdate.stopTimeUpdate.push(decodeStopTimeUpdate(reader.readEmbedded()));
+        }
+        else if(tag.field === 3 && tag.wireType === 2){
+            tripUpdate.vehicle = decodeVehicleDescriptor(reader.readEmbedded());
+        }
+        else if(tag.field === 4 && tag.wireType === 0){
+            tripUpdate.timestamp = reader.readVarintNumber();
+        }
+        else if(tag.field === 5 && tag.wireType === 0){
+            tripUpdate.delay = reader.readInt32();
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return tripUpdate;
+}
+
+function decodeTripDescriptor(reader){
+    const trip = {};
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 2){
+            trip.tripId = reader.readString();
+        }
+        else if(tag.field === 2 && tag.wireType === 2){
+            trip.startTime = reader.readString();
+        }
+        else if(tag.field === 3 && tag.wireType === 2){
+            trip.startDate = reader.readString();
+        }
+        else if(tag.field === 4 && tag.wireType === 0){
+            trip.scheduleRelationship = reader.readVarintNumber();
+        }
+        else if(tag.field === 5 && tag.wireType === 2){
+            trip.routeId = reader.readString();
+        }
+        else if(tag.field === 6 && tag.wireType === 0){
+            trip.directionId = reader.readVarintNumber();
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return trip;
+}
+
+function decodeVehicleDescriptor(reader){
+    const vehicle = {};
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 2){
+            vehicle.id = reader.readString();
+        }
+        else if(tag.field === 2 && tag.wireType === 2){
+            vehicle.label = reader.readString();
+        }
+        else if(tag.field === 3 && tag.wireType === 2){
+            vehicle.licensePlate = reader.readString();
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return vehicle;
+}
+
+function decodeStopTimeUpdate(reader){
+    const stopTimeUpdate = {};
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 0){
+            stopTimeUpdate.stopSequence = reader.readVarintNumber();
+        }
+        else if(tag.field === 2 && tag.wireType === 2){
+            stopTimeUpdate.arrival = decodeStopTimeEvent(reader.readEmbedded());
+        }
+        else if(tag.field === 3 && tag.wireType === 2){
+            stopTimeUpdate.departure = decodeStopTimeEvent(reader.readEmbedded());
+        }
+        else if(tag.field === 4 && tag.wireType === 2){
+            stopTimeUpdate.stopId = reader.readString();
+        }
+        else if(tag.field === 5 && tag.wireType === 0){
+            stopTimeUpdate.scheduleRelationship = reader.readVarintNumber();
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return stopTimeUpdate;
+}
+
+function decodeStopTimeEvent(reader){
+    const event = {};
+
+    while(!reader.eof()){
+        const tag = reader.readTag();
+        if(!tag) break;
+
+        if(tag.field === 1 && tag.wireType === 0){
+            event.delay = reader.readInt32();
+        }
+        else if(tag.field === 2 && tag.wireType === 0){
+            event.time = reader.readVarintNumber();
+        }
+        else if(tag.field === 3 && tag.wireType === 0){
+            event.uncertainty = reader.readInt32();
+        }
+        else{
+            reader.skip(tag.wireType);
+        }
+    }
+
+    return event;
+}
+
+class ProtoReader{
+    constructor(bytes, start = 0, end = bytes.length){
+        this.bytes = bytes;
+        this.pos = start;
+        this.end = end;
+        this.decoder = ProtoReader.decoder || (ProtoReader.decoder = new TextDecoder("utf-8"));
+    }
+
+    eof(){
+        return this.pos >= this.end;
+    }
+
+    readTag(){
+        if(this.eof()){
+            return null;
+        }
+
+        const key = this.readVarintNumber();
+        return {
+            field: Math.floor(key / 8),
+            wireType: key & 7
+        };
+    }
+
+    readVarintBig(){
+        let shift = 0n;
+        let result = 0n;
+
+        while(this.pos < this.end){
+            const byte = BigInt(this.bytes[this.pos++]);
+            result |= (byte & 0x7fn) << shift;
+            if((byte & 0x80n) === 0n){
+                return result;
+            }
+            shift += 7n;
+        }
+
+        throw new Error("Invalid protobuf varint.");
+    }
+
+    readVarintNumber(){
+        const value = this.readVarintBig();
+        if(value > BigInt(Number.MAX_SAFE_INTEGER)){
+            return Number(value & 0xffffffffn);
+        }
+        return Number(value);
+    }
+
+    readInt32(){
+        return Number(BigInt.asIntN(32, this.readVarintBig()));
+    }
+
+    readString(){
+        const bytes = this.readBytes();
+        return this.decoder.decode(bytes);
+    }
+
+    readBytes(){
+        const length = this.readVarintNumber();
+        const start = this.pos;
+        const end = start + length;
+        if(end > this.end){
+            throw new Error("Invalid protobuf length.");
+        }
+        this.pos = end;
+        return this.bytes.subarray(start, end);
+    }
+
+    readEmbedded(){
+        const length = this.readVarintNumber();
+        const start = this.pos;
+        const end = start + length;
+        if(end > this.end){
+            throw new Error("Invalid embedded protobuf length.");
+        }
+        this.pos = end;
+        return new ProtoReader(this.bytes, start, end);
+    }
+
+    skip(wireType){
+        if(wireType === 0){
+            this.readVarintBig();
+        }
+        else if(wireType === 1){
+            this.pos += 8;
+        }
+        else if(wireType === 2){
+            const length = this.readVarintNumber();
+            this.pos += length;
+        }
+        else if(wireType === 5){
+            this.pos += 4;
+        }
+        else{
+            throw new Error(`Unsupported protobuf wire type ${wireType}.`);
+        }
+
+        if(this.pos > this.end){
+            throw new Error("Invalid protobuf field length.");
+        }
+    }
+}
+
+/* ================= CSV AND ZIP ================= */
+
+async function loadJSZip(){
+    if(!jsZipPromise){
+        jsZipPromise = import(JSZIP_URL).then(module => module.default || module.JSZip || module);
+    }
+    return jsZipPromise;
+}
+
+function getZipEntry(zip, fileName){
+    const direct = zip.file(fileName);
+    if(direct){
+        return direct;
+    }
+
+    const matches = zip.file(new RegExp(`(^|/)${escapeRegExp(fileName)}$`, "i"));
+    if(matches.length){
+        return matches[0];
+    }
+
+    throw new Error(`${fileName} is missing from the GTFS ZIP.`);
+}
+
+async function parseOptionalZipCsvText(zip, fileName){
+    try{
+        const entry = getZipEntry(zip, fileName);
+        return parseCsvText(await entry.async("string"));
+    }
+    catch(err){
+        console.warn(`${fileName} not available`, err);
+        return [];
+    }
+}
+
+async function streamZipCsv(zip, fileName, handlers){
+    const entry = getZipEntry(zip, fileName);
+
+    if(!entry.internalStream){
+        const rows = parseCsvText(await entry.async("string"));
+        const headers = rows.headers || [];
+        const index = makeHeaderIndex(headers);
+        rows.forEach((row, i) => {
+            const fields = headers.map(h => row[h] || "");
+            handlers.onRecord?.(fields, index, i + 1);
+        });
+        return;
+    }
+
+    const decoder = new TextDecoder("utf-8");
+    let headers = null;
+    let index = null;
+    let leftover = "";
+    let recordCount = 0;
+
+    await new Promise((resolve, reject) => {
+        const stream = entry.internalStream("uint8array");
+
+        stream.on("data", chunk => {
+            processText(decoder.decode(chunk, { stream:true }));
+        });
+
+        stream.on("end", () => {
+            const tail = decoder.decode();
+            if(tail){
+                processText(tail);
+            }
+            if(leftover){
+                processLine(leftover);
+            }
+            resolve();
+        });
+
+        stream.on("error", reject);
+        stream.resume();
+    });
+
+    function processText(text){
+        const parts = (leftover + text).split("\n");
+        leftover = parts.pop() || "";
+
+        for(let line of parts){
+            if(line.endsWith("\r")){
+                line = line.slice(0, -1);
+            }
+            processLine(line);
+        }
+    }
+
+    function processLine(line){
+        if(!line && headers){
+            return;
+        }
+
+        const fields = parseCsvLine(line);
+
+        if(!headers){
+            headers = fields.map(cleanHeader);
+            index = makeHeaderIndex(headers);
+            handlers.onHeader?.(headers, index);
+            return;
+        }
+
+        recordCount++;
+        handlers.onRecord?.(fields, index, recordCount);
+    }
+}
+
+function parseCsvText(text){
+    if(text.charCodeAt(0) === 0xFEFF){
+        text = text.slice(1);
+    }
+
+    const rows = [];
+    let row = [];
+    let field = "";
+    let quoted = false;
+
+    for(let i = 0; i < text.length; i++){
+        const c = text[i];
+
+        if(c === '"'){
+            if(quoted && text[i + 1] === '"'){
+                field += '"';
+                i++;
+            }
+            else{
+                quoted = !quoted;
+            }
+        }
+        else if(c === "," && !quoted){
+            row.push(cleanValue(field));
+            field = "";
+        }
+        else if((c === "\n" || c === "\r") && !quoted){
+            if(c === "\r" && text[i + 1] === "\n"){
+                i++;
+            }
+            row.push(cleanValue(field));
+            rows.push(row);
+            row = [];
+            field = "";
+        }
+        else{
+            field += c;
+        }
+    }
+
+    if(field || row.length){
+        row.push(cleanValue(field));
+        rows.push(row);
+    }
+
+    const headers = (rows.shift() || []).map(cleanHeader);
+    const data = rows.map(fields => {
+        const obj = {};
+        headers.forEach((header, i) => {
+            obj[header] = fields[i] || "";
+        });
+        return obj;
+    });
+    data.headers = headers;
+    return data;
+}
+
+function parseCsvLine(line){
+    if(!line.includes('"')){
+        return line.split(",").map(cleanValue);
+    }
+
+    const fields = [];
+    let field = "";
+    let quoted = false;
+
+    for(let i = 0; i < line.length; i++){
+        const c = line[i];
+
+        if(c === '"'){
+            if(quoted && line[i + 1] === '"'){
+                field += '"';
+                i++;
+            }
+            else{
+                quoted = !quoted;
+            }
+        }
+        else if(c === "," && !quoted){
+            fields.push(cleanValue(field));
+            field = "";
+        }
+        else{
+            field += c;
+        }
+    }
+
+    fields.push(cleanValue(field));
+    return fields;
+}
+
+function cleanHeader(value){
+    return cleanValue(value).replace(/^\uFEFF/, "");
+}
+
+function cleanValue(value){
+    return String(value ?? "").trim();
+}
+
+function makeHeaderIndex(headers){
+    const index = Object.create(null);
+    headers.forEach((header, i) => {
+        index[header] = i;
+    });
+    return index;
+}
+
+function valueAt(fields, index, name){
+    const i = index[name];
+    return i === undefined ? "" : (fields[i] || "");
+}
+
+/* ================= SERVICE CALENDAR ================= */
+
+function chooseServiceDate(calendarRows, calendarDateRows, startDate){
+    const hasCalendar = calendarRows.length || calendarDateRows.length;
+
+    if(!hasCalendar){
+        return { ids:new Set(), ymd:localYmd(startDate) };
+    }
+
+    for(let offset = 0; offset <= 60; offset++){
+        const date = addDays(startDate, offset);
+        const ids = activeServicesForDate(calendarRows, calendarDateRows, date);
+        if(ids.size){
+            return { ids, ymd:localYmd(date) };
+        }
+    }
+
+    throw new Error("No active services were found in the next 60 days of this GTFS feed.");
+}
+
+function activeServicesForDate(calendarRows, calendarDateRows, date){
+    const ymd = localYmd(date);
+    const dayName = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"][date.getDay()];
+    const ids = new Set();
+
+    for(const row of calendarRows){
+        if(row[dayName] === "1" && row.start_date <= ymd && row.end_date >= ymd){
+            ids.add(row.service_id);
+        }
+    }
+
+    for(const row of calendarDateRows){
+        if(row.date !== ymd){
+            continue;
+        }
+
+        if(row.exception_type === "1"){
+            ids.add(row.service_id);
+        }
+        else if(row.exception_type === "2"){
+            ids.delete(row.service_id);
+        }
+    }
+
+    return ids;
+}
+
+/* ================= HELPERS ================= */
+
+function normalizeSearch(value){
+    return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function escapeRegExp(value){
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toNumber(value){
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+}
+
+function normalizeDelay(value){
+    const num = toNumber(value);
+    return num === null ? null : num;
+}
+
+function read(obj, ...keys){
+    for(const key of keys){
+        if(obj && Object.prototype.hasOwnProperty.call(obj, key)){
+            return obj[key];
+        }
+    }
+    return undefined;
+}
+
+function readList(obj, ...keys){
+    const value = read(obj, ...keys);
+    return Array.isArray(value) ? value : [];
+}
+
+function tripScheduleText(value){
+    const byNumber = {
+        0:"SCHEDULED",
+        1:"ADDED",
+        2:"UNSCHEDULED",
+        3:"CANCELED",
+        5:"REPLACEMENT",
+        6:"DUPLICATED",
+        7:"DELETED"
+    };
+    return scheduleText(value, byNumber);
+}
+
+function stopScheduleText(value){
+    const byNumber = {
+        0:"SCHEDULED",
+        1:"SKIPPED",
+        2:"NO_DATA",
+        3:"UNSCHEDULED"
+    };
+    return scheduleText(value, byNumber);
+}
+
+function scheduleText(value, byNumber){
+    if(value === null || value === undefined){
+        return "";
+    }
+    if(typeof value === "number"){
+        return byNumber[value] || String(value);
+    }
+    return String(value).toUpperCase();
+}
+
+function localYmd(date){
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}${m}${d}`;
+}
+
+function addDays(date, days){
+    const copy = new Date(date);
+    copy.setDate(copy.getDate() + days);
+    return copy;
+}
+
+function formatDateLabel(ymd){
+    if(!ymd || ymd.length !== 8){
+        return "the selected service date";
+    }
+    return `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`;
+}
+
+function timeToSeconds(t){
+    if(!t){
+        return Number.POSITIVE_INFINITY;
+    }
+
+    const parts = String(t).split(":").map(Number);
+    if(parts.length < 2 || parts.some(part => !Number.isFinite(part))){
+        return Number.POSITIVE_INFINITY;
+    }
+
+    return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+}
+
+function currentServiceSeconds(){
+    const now = new Date();
+    return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+}
+
+function formatGtfsTime(time, delaySec = 0){
+    const seconds = timeToSeconds(time) + (delaySec || 0);
+    if(!Number.isFinite(seconds)){
+        return "--";
+    }
+
+    const dayOffset = Math.floor(seconds / 86400);
+    const daySeconds = ((seconds % 86400) + 86400) % 86400;
+    const h = String(Math.floor(daySeconds / 3600)).padStart(2, "0");
+    const m = String(Math.floor((daySeconds % 3600) / 60)).padStart(2, "0");
+    const suffix = dayOffset > 0 ? ` +${dayOffset}d` : "";
+    return `${h}:${m}${suffix}`;
+}
+
+function getMinutesLeft(time, delaySec = 0){
+    if(!time){
+        return "--";
+    }
+
+    let diff = timeToSeconds(time) + (delaySec || 0) - currentServiceSeconds();
+
+    if(diff <= 0){
+        return "DEPARTED";
+    }
+
+    const h = Math.floor(diff / 3600);
+    diff %= 3600;
+    const m = Math.floor(diff / 60);
+    const s = Math.floor(diff % 60);
+
+    if(h > 0){
+        return `${h}h ${m}m`;
+    }
+
+    if(m > 0){
+        return `${m}m ${String(s).padStart(2, "0")}s`;
+    }
+
+    return `${s}s`;
+}
+
+function formatDelayText(delay){
+    if(delay === null || delay === undefined || delay === 0){
+        return "";
+    }
+
+    const minutes = formatDelayMinutes(delay);
+    if(delay > 0){
+        return ` (+${minutes}m)`;
+    }
+    return ` (-${minutes}m)`;
+}
+
+function formatDelayMinutes(delay){
+    return Math.max(1, Math.ceil(Math.abs(delay) / 60));
+}
+
+function getSortedTripStops(tripId){
+    const list = stopTimesByTrip[tripId] || [];
+    if(tripSortDirty.has(tripId)){
+        list.sort((a,b) => (a.stop_sequence ?? 0) - (b.stop_sequence ?? 0));
+        tripSortDirty.delete(tripId);
+    }
+    return list;
+}
+
+function getSortedStopTimes(stopId){
+    const list = stopTimesByStop[stopId] || [];
+    if(stopSortDirty.has(stopId)){
+        list.sort((a,b) => timeToSeconds(a.departure_time) - timeToSeconds(b.departure_time));
+        stopSortDirty.delete(stopId);
+    }
+    return list;
+}
+
+function getStopDisplayName(stopId){
+    const stop = stopsById[stopId];
+    if(!stop){
+        return stopId || "";
+    }
+
+    const parent = stop.parent_station ? stopsById[stop.parent_station] : null;
+    return parent?.stop_name || stop.stop_name || stopId;
+}
+
+function getPlatform(stopTime){
+    const stop = stopsById[stopTime.stop_id] || {};
+    return stopTime.platform_code || stop.platform_code || stop.platform || stop.track || "?";
+}
+
+function getDestination(stopTime, trip, route){
+    const tripStops = getSortedTripStops(stopTime.trip_id);
+    const lastStop = tripStops[tripStops.length - 1];
+    if(lastStop){
+        return getStopDisplayName(lastStop.stop_id);
+    }
+    if(stopTime.stop_headsign){
+        return stopTime.stop_headsign;
+    }
+    if(trip?.trip_headsign){
+        return trip.trip_headsign;
+    }
+
+    return route?.route_long_name || route?.route_short_name || "UNKNOWN DESTINATION";
+}
+
+/* ================= CALLING AT ================= */
+
+function getCallingAt(tripId, stopId){
+    const cacheKey = `${tripId}_${stopId}`;
+    if(callingAtCache[cacheKey]){
+        return callingAtCache[cacheKey];
+    }
+
+    const out = getDownstreamStopNames(tripId, stopId);
+
+    let result = "No further stops";
+    if(out.length){
+        result = out.slice(0, 10).join(", ");
+        if(out.length > 10){
+            result += ", ...";
+        }
+    }
+
+    callingAtCache[cacheKey] = result;
+    return result;
+}
+
+function getDownstreamStopNames(tripId, stopId){
+    const list = getSortedTripStops(tripId);
+    let found = false;
+    const out = [];
+    let previous = "";
+
+    for(const stopTime of list){
+        if(stopTime.stop_id === stopId){
+            found = true;
+            continue;
+        }
+
+        if(found){
+            const name = getStopDisplayName(stopTime.stop_id);
+            if(name && name !== previous){
+                out.push(name);
+                previous = name;
+            }
+        }
+    }
+
+    return out;
+}
+
+function getOriginName(tripId){
+    const firstStop = getSortedTripStops(tripId)[0];
+    return firstStop ? getStopDisplayName(firstStop.stop_id) : "";
+}
+
+function getOperatorName(route, line){
+    const agency = route?.agency_id ? agenciesById[route.agency_id] : null;
+    const agencyName = agency?.agency_name || "";
+    const routeName = route?.route_long_name || route?.route_short_name || line || "";
+
+    if(agencyName && routeName && !normalizeSearch(routeName).includes(normalizeSearch(agencyName))){
+        return `${agencyName} ${routeName}`;
+    }
+
+    return agencyName || routeName || line || "rail";
+}
+
+/* ================= VEHICLE DETAILS ================= */
+
+function getCoachCount(line, type){
+    if(type === "BUS" || type === "TRAM" || type === "FERRY"){
+        return "-";
+    }
+
+    const l = (line || "").toUpperCase();
+
+    if(l.includes("ICE")) return 12;
+    if(l.includes("IC")) return 8;
+    if(l.includes("EC")) return 9;
+    if(l.includes("RJ")) return 7;
+    if(l.includes("TGV")) return 10;
+    if(l.includes("RE")) return 5;
+    if(l.includes("RB")) return 3;
+    if(l.includes("S")) return 4;
+
+    return 5;
+}
+
+function getRouteType(route){
+    if(!route) return "SERVICE";
+
+    const type = String(route.route_type || route.route_type_id || "").trim();
+    switch(type){
+        case "0": return "TRAM";
+        case "1": return "SUBWAY";
+        case "2": return "RAIL";
+        case "3": return "BUS";
+        case "4": return "FERRY";
+        case "5": return "CABLE CAR";
+        case "6": return "GONDOLA";
+        case "7": return "FUNICULAR";
+        case "11": return "TROLLEYBUS";
+        case "12": return "MONORAIL";
+        default:
+            const name = (route.route_long_name || route.route_short_name || "").toUpperCase();
+            if(name.includes("METRO") || name.includes("U-BAHN")) return "SUBWAY";
+            if(name.includes("TRAIN") || name.includes("BAHN")) return "RAIL";
+            if(name.includes("BUS")) return "BUS";
+            return "SERVICE";
+    }
+}
+
+/* ================= ANNOUNCEMENTS ================= */
+
+function departureAnnouncement(d){
+    speak(buildStationAnnouncement(d));
+}
+
+function getAnnouncementText(){
+    return ANNOUNCEMENT_TEXT[announcementLang] || ANNOUNCEMENT_TEXT[defaultAnnouncementLang];
+}
+
+function buildStationAnnouncement(d){
+    const text = getAnnouncementText();
+    // Always avoid announcing specific platform/vehicle numbers
+    let platform = "unknown";
+    const destination = d.dest || text.destinationFallback;
+    const time = formatSpeechTime(d.time);
+    const operator = d.operatorName || d.line || d.type || text.railFallback;
+    const delayMinutes = formatDelayMinutes(d.delay || 0);
+
+    if(d.canceled || d.skipped){
+        return text.canceled({ time, operator, destination });
+    }
+
+    if((d.delay || 0) > 0){
+        return text.delay({ time, operator, destination, delayMinutes });
+    }
+
+    const calling = formatCallingSpeech(d);
+    const coaches = d.coaches !== "-" ? text.coaches(d.coaches) : "";
+    const payload = { platform, time, operator, destination, calling, coaches };
+    const usePlatform = platform !== "unknown";
+
+    if(d.startsHere){
+        return usePlatform ? text.starts(payload) : text.starts_no_platform(payload);
+    }
+
+    return usePlatform ? text.through(payload) : text.through_no_platform(payload);
+}
+
+function formatSpeechTime(time){
+    return formatGtfsTime(time).replace(" +", ` ${getAnnouncementText().plusDay} `);
+}
+
+function formatCallingSpeech(d){
+    const text = getAnnouncementText();
+    const stops = getDownstreamStopNames(d.trip_id, d.stop_id);
+    const destination = d.dest || stops[stops.length - 1] || text.destinationFallback;
+    const cleaned = stops.filter(name => name && name !== destination);
+
+    if(!cleaned.length){
+        return text.callingOnly(destination);
+    }
+
+    const limited = cleaned.slice(0, 12);
+    const list = limited.join(", ");
+    const extra = cleaned.length > limited.length ? text.otherStations : "";
+    return text.callingAt({ list, extra, destination });
+}
+
+/* ================= RENDER ================= */
+
+function clearBoard(){
+    board.innerHTML = "";
+}
+
+function renderDozorBoard(){
+    clearBoard();
+
+    if(!currentStation){
+        return;
+    }
+
+    const stopIds = currentStation.stopIds || [];
+    const anchorStop = stopsById[stopIds[0]];
+    if(!anchorStop || anchorStop.stop_lat == null || anchorStop.stop_lon == null){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "Selected stop has no coordinates in the Dozor feed.";
+        tr.appendChild(td);
+        board.appendChild(tr);
+        return;
+    }
+
+    const routes = getDozorRoutesForStopIds(stopIds);
+    const nowSec = currentServiceSeconds();
+    const rows = [];
+
+    for(const route of routes){
+        const typeInfo = parseDozorRouteType(route);
+        const devices = getDozorDevicesForRoute(route);
+        const destination = parseDozorDestination(pickDozorLabel(route.nm));
+        const callingAt = pickDozorLabel(route.nm);
+
+        for(const device of devices){
+            const lat = Number(device.latitude);
+            const lon = Number(device.longitude);
+            if(!Number.isFinite(lat) || !Number.isFinite(lon)){
+                continue;
+            }
+
+            const distance = haversineMeters(anchorStop.stop_lat, anchorStop.stop_lon, lat, lon);
+            if(distance > 6000){
+                continue;
+            }
+
+            const speedKmh = Number(device.speed) || 0;
+            const etaSeconds = estimateDozorEtaSeconds(distance, speedKmh);
+            const status = getDozorStatus(distance, speedKmh);
+
+            rows.push({
+                type: typeInfo.label,
+                line: String(route.sNm || device.route_short_name || "?"),
+                dest: destination,
+                // Do not display vehicle gov numbers
+                platform: "-",
+                coaches: "-",
+                callingAt,
+                departure: `≈${formatEta(etaSeconds)}`,
+                sortKey: etaSeconds,
+                sortTime: nowSec + etaSeconds,
+                time: formatDozorArrivalTime(etaSeconds),
+                realtimeStatus: status.text,
+                statusClass: status.className,
+                // Use device identity to uniquely identify a transport
+                trip_id: dozorDeviceIdentity(device),
+                stop_id: anchorStop.stop_id,
+                delay: 0,
+                canceled: false,
+                skipped: false,
+                startsHere: false,
+                operatorName: `${dozorCityName || "Dozor"} transport`,
+                dozorLive: true
+            });
+        }
+    }
+
+    rows.sort((a,b) => a.sortKey - b.sortKey);
+
+    // Deduplicate transports: keep first occurrence per unique bus or vehicle identity
+    const unique = [];
+    const seen = new Set();
+    for(const r of rows){
+        const dedupeKey = r.trip_id || `${r.line}|${r.dest}|${r.departure}`;
+        if(seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        unique.push(r);
+    }
+
+    if(!rows.length){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = dozorLastRefresh
+            ? "No live vehicles are approaching this stop right now."
+            : "Waiting for live vehicle data from Dozor...";
+        tr.appendChild(td);
+        board.appendChild(tr);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    for(const d of unique.slice(0, BOARD_LIMIT)){
+        const tr = document.createElement("tr");
+        appendCell(tr, d.type);
+        appendCell(tr, d.line);
+        appendCell(tr, d.dest, "destination-cell");
+        appendCell(tr, d.departure);
+        appendCell(tr, d.realtimeStatus, d.statusClass);
+        fragment.appendChild(tr);
+        maybeAnnounce(d);
+    }
+
+    board.appendChild(fragment);
+}
+
+function render(){
+    clearBoard();
+
+    if(!currentStation){
+        return;
+    }
+
+    if(dataSource === "dozor"){
+        renderDozorBoard();
+        return;
+    }
+
+    const stopIds = currentStation.stopIds || [];
+    const selectedStopIdSet = new Set(stopIds);
+    const nowSec = currentServiceSeconds();
+    const rows = [];
+
+    for(const stopId of stopIds){
+        for(const stopTime of getSortedStopTimes(stopId)){
+            if(stopTime.pickup_type === "1"){
+                continue;
+            }
+
+            const tripStops = getSortedTripStops(stopTime.trip_id);
+            const firstStop = tripStops[0];
+            const lastStop = tripStops[tripStops.length - 1];
+            if(lastStop && selectedStopIdSet.has(lastStop.stop_id)){
+                continue;
+            }
+
+            const realtime = getRealtimeUpdate(stopTime.trip_id, stopTime.stop_id, stopTime.stop_sequence);
+            const delay = realtime?.delay ?? 0;
+            const depSec = timeToSeconds(stopTime.departure_time) + delay;
+
+            if(depSec < nowSec - 30 || depSec > nowSec + LOOKAHEAD_SECONDS){
+                continue;
+            }
+
+            const trip = tripsById[stopTime.trip_id];
+            const route = routesById[trip?.route_id];
+            const type = getRouteType(route);
+            const line = route?.route_short_name || route?.route_long_name || "UNKNOWN";
+            const canceled = Boolean(realtime?.canceled || realtime?.skipped);
+            const startsHere = Boolean(firstStop && selectedStopIdSet.has(firstStop.stop_id));
+
+            rows.push({
+                trip_id: stopTime.trip_id,
+                stop_id: stopTime.stop_id,
+                stop_sequence: stopTime.stop_sequence,
+                type,
+                line,
+                operatorName: getOperatorName(route, line),
+                dest: getDestination(stopTime, trip, route),
+                time: stopTime.departure_time,
+                sortTime: depSec,
+                platform: getPlatform(stopTime),
+                coaches: getCoachCount(line, type),
+                origin: getOriginName(stopTime.trip_id),
+                startsHere,
+                delay,
+                canceled,
+                skipped: Boolean(realtime?.skipped),
+                realtimeStatus: getStatusText(realtime, delay),
+                statusClass: getStatusClass(realtime, delay)
+            });
+        }
+    }
+
+    rows.sort((a,b) => a.sortTime - b.sortTime);
+
+    // Deduplicate transports so there is only one row per bus/trip.
+    const uniqueRows = [];
+    const seenTrips = new Set();
+    for(const r of rows){
+        const dedupeKey = r.trip_id || `${r.line}|${r.dest}|${r.time}`;
+        if(seenTrips.has(dedupeKey)) continue;
+        seenTrips.add(dedupeKey);
+        uniqueRows.push(r);
+    }
+
+    // Update status with next refresh countdown
+    const refreshStatus = nextRefreshCountdown > 0 ? ` [Оновлення через ${nextRefreshCountdown}s]` : " [Оновлення...]";
+    if(statusEl.textContent && !statusEl.textContent.includes("[Оновлення")){
+        statusEl.textContent += refreshStatus;
+    }
+    else if(statusEl.textContent){
+        statusEl.textContent = statusEl.textContent.replace(/\s*\[Refresh.*?\]\s*$/, refreshStatus);
+    }
+
+    if(!rows.length){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "No upcoming departures for this station in the current lookahead window.";
+        tr.appendChild(td);
+        board.appendChild(tr);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    for(const d of uniqueRows.slice(0, BOARD_LIMIT)){
+        const tr = document.createElement("tr");
+        const delayText = formatDelayText(d.delay);
+        const departureDisplay = `${formatGtfsTime(d.time)}${delayText} (${getMinutesLeft(d.time, d.delay || 0)})`;
+
+        appendCell(tr, d.type);
+        appendCell(tr, d.line);
+        appendCell(tr, d.dest, "destination-cell");
+        appendCell(tr, departureDisplay);
+        appendCell(tr, d.realtimeStatus, d.statusClass);
+
+        fragment.appendChild(tr);
+        maybeAnnounce(d);
+    }
+
+    board.appendChild(fragment);
+}
+
+function appendCell(tr, text, className){
+    const td = document.createElement("td");
+    td.textContent = text ?? "";
+    if(className){
+        td.className = className;
+    }
+    tr.appendChild(td);
+}
+
+function getStatusText(realtime, delay){
+    if(modeSelect.value !== "realtime" || !realtimeLastLoad || !realtime?.hasUpdate){
+        return "SCHEDULED";
+    }
+    if(realtime?.canceled){
+        return "CANCELLED";
+    }
+    if(realtime?.skipped){
+        return "STOP CANCELLED";
+    }
+    if(delay > 0){
+        return `DELAY +${formatDelayMinutes(delay)}m`;
+    }
+    if(delay < 0){
+        return `EARLY ${formatDelayMinutes(delay)}m`;
+    }
+    return "ON TIME";
+}
+
+function getStatusClass(realtime, delay){
+    if(modeSelect.value !== "realtime" || !realtimeLastLoad || !realtime?.hasUpdate){
+        return "scheduled";
+    }
+    if(realtime?.canceled || realtime?.skipped){
+        return "cancel";
+    }
+    if(delay > 0){
+        return "delay";
+    }
+    if(delay < 0){
+        return "early";
+    }
+    return "on";
+}
+
+function maybeAnnounce(d){
+    if(!announceToggle.checked){
+        return;
+    }
+
+    const diff = d.sortTime - currentServiceSeconds();
+    const kind =
+        d.canceled || d.skipped ? "cancel" :
+        (d.delay || 0) > 0 ? "delay" :
+        "boarding";
+
+    const windowSeconds =
+        kind === "cancel" ? 1200 :
+        kind === "delay" ? 900 :
+        d.startsHere ? 300 :
+        180;
+
+    // Exclude platform from announce key to avoid platform-based duplicate keys
+    const announceKey = `${kind}_${d.trip_id}_${d.time || d.sortTime || 0}_${d.dest}_${Math.round((d.delay || 0) / 60)}`;
+
+    if(!announced[announceKey] && diff <= windowSeconds && diff > 0){
+        departureAnnouncement(d);
+        announced[announceKey] = true;
+    }
+}
+
+/* ================= FULLSCREEN ================= */
+
+function toggleFullscreen(){
+    if(!document.fullscreenElement){
+        document.documentElement.requestFullscreen().catch(err => {
+            console.warn("Fullscreen failed", err);
+        });
+    }
+}
+
+/* ================= TIMERS ================= */
+
+setInterval(()=>{
+    if(Object.keys(announced).length > 5000){
+        announced = {};
+    }
+}, 600000);
+
+let renderTimer = null;
+let autoRefreshTimer = null;
+let nextRefreshCountdown = 1;
+
+function updateRefreshStatus(){
+    nextRefreshCountdown--;
+    if(nextRefreshCountdown <= 0){
+        nextRefreshCountdown = 1;
+    }
+}
+
+function startRenderLoop(){
+    if(renderTimer){
+        clearInterval(renderTimer);
+    }
+
+    renderTimer = setInterval(()=>{
+        updateRefreshStatus();
+        if(currentStation){
+            render();
+        }
+    }, 1000);
+}
+
+function startAutoRefresh(){
+    if(autoRefreshTimer){
+        clearInterval(autoRefreshTimer);
+    }
+
+    autoRefreshTimer = setInterval(()=>{
+        if(dataSource === "dozor"){
+            refreshDozorDevices().catch(err => console.warn("Auto-refresh failed", err));
+        }
+        else if(dataSource === "gtfs" && currentStation){
+            render();
+        }
+        nextRefreshCountdown = 1;
+    }, 1000);
+}
+
+startRenderLoop();
+startAutoRefresh();
+
+</script>
+
+</body>
+</html>
